@@ -1,0 +1,164 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "Jon Jones"
+date: "January 2, 2017"
+output: html_document
+---
+
+This project will load a data set containing exercise data and build a prediction model to 
+predict how well the subject did the exercise.  "How well" is divided into a categorical variable with categories A, B, C, D, E, and F.
+
+Load the required data and any necessary packages
+```{r}
+install.packages('randomForest', repos = "http://cran.us.r-project.org")
+library(caret)
+library(randomForest)
+setwd('/Users/jonporterjones/Coursera/PracticalMachineLearning/CourseProject')
+trainData=read.csv('pml-training.csv')
+testData=read.csv('pml-testing.csv')
+```
+
+The train and test datasets contain 160 columns each.  These statements will trim these datasets to 54 variables.  Most of the columns being removed are either Null or are things such as avg, sd, variance, min, and max that are summaries of actual data values and not likely useful for prediction
+```{r}
+trainSubset=trainData[,c('classe',
+                         'user_name',                
+                         'roll_belt',               
+                         'pitch_belt',               
+                         'yaw_belt',                 
+                         'total_accel_belt',         
+                         'gyros_belt_x',             
+                         'gyros_belt_y',             
+                         'gyros_belt_z',             
+                         'accel_belt_x',            
+                         'accel_belt_y',             
+                         'accel_belt_z',             
+                         'magnet_belt_x',            
+                         'magnet_belt_y',           
+                         'magnet_belt_z',            
+                         'roll_arm',                 
+                         'pitch_arm',                
+                         'yaw_arm',                 
+                         'total_accel_arm',          
+                         'gyros_arm_x',             
+                         'gyros_arm_y',              
+                         'gyros_arm_z',              
+                         'accel_arm_x',              
+                         'accel_arm_y',             
+                         'accel_arm_z',              
+                         'magnet_arm_x',             
+                         'magnet_arm_y',             
+                         'magnet_arm_z',            
+                         'roll_dumbbell',           
+                         'pitch_dumbbell',           
+                         'yaw_dumbbell',               
+                         'total_accel_dumbbell',     
+                         'gyros_dumbbell_x',         
+                         'gyros_dumbbell_y',         
+                         'gyros_dumbbell_z',         
+                         'accel_dumbbell_x',        
+                         'accel_dumbbell_y',         
+                         'accel_dumbbell_z',        
+                         'magnet_dumbbell_x',        
+                         'magnet_dumbbell_y',       
+                         'magnet_dumbbell_z',        
+                         'roll_forearm',             
+                         'pitch_forearm',            
+                         'yaw_forearm',             
+                         'total_accel_forearm',     
+                         'gyros_forearm_x',          
+                         'gyros_forearm_y',         
+                         'gyros_forearm_z',          
+                         'accel_forearm_x',          
+                         'accel_forearm_y',          
+                         'accel_forearm_z',         
+                         'magnet_forearm_x',         
+                         'magnet_forearm_y',         
+                         'magnet_forearm_z')]
+
+testSubset=testData[,c('problem_id',
+                         'user_name',                
+                         'roll_belt',               
+                         'pitch_belt',               
+                         'yaw_belt',                 
+                         'total_accel_belt',         
+                         'gyros_belt_x',             
+                         'gyros_belt_y',             
+                         'gyros_belt_z',             
+                         'accel_belt_x',            
+                         'accel_belt_y',             
+                         'accel_belt_z',             
+                         'magnet_belt_x',            
+                         'magnet_belt_y',           
+                         'magnet_belt_z',            
+                         'roll_arm',                 
+                         'pitch_arm',                
+                         'yaw_arm',                 
+                         'total_accel_arm',          
+                         'gyros_arm_x',             
+                         'gyros_arm_y',              
+                         'gyros_arm_z',              
+                         'accel_arm_x',              
+                         'accel_arm_y',             
+                         'accel_arm_z',              
+                         'magnet_arm_x',             
+                         'magnet_arm_y',             
+                         'magnet_arm_z',            
+                         'roll_dumbbell',           
+                         'pitch_dumbbell',           
+                         'yaw_dumbbell',               
+                         'total_accel_dumbbell',     
+                         'gyros_dumbbell_x',         
+                         'gyros_dumbbell_y',         
+                         'gyros_dumbbell_z',         
+                         'accel_dumbbell_x',        
+                         'accel_dumbbell_y',         
+                         'accel_dumbbell_z',        
+                         'magnet_dumbbell_x',        
+                         'magnet_dumbbell_y',       
+                         'magnet_dumbbell_z',        
+                         'roll_forearm',             
+                         'pitch_forearm',            
+                         'yaw_forearm',             
+                         'total_accel_forearm',     
+                         'gyros_forearm_x',          
+                         'gyros_forearm_y',         
+                         'gyros_forearm_z',          
+                         'accel_forearm_x',          
+                         'accel_forearm_y',          
+                         'accel_forearm_z',         
+                         'magnet_forearm_x',         
+                         'magnet_forearm_y',         
+                         'magnet_forearm_z')]
+```
+
+The training data contains 19,622 variables.  Since this is a large quantity I'm going to create smaller datasets to use for training and validation.  I'll split it at 60% training and 40% validation.  I'll use the validation data set for cross validation and to measure my out of sample error.  This makes the train set contain 11,776 observations vs 7846 for validation.
+```{r}
+inTrain = createDataPartition(trainSubset$classe, p = 0.60)[[1]]
+trainSubsetValidation = trainSubset[-inTrain,]
+trainSubsetTrain = trainSubset[inTrain,]
+```
+
+I've built several different models using trees, random forest and boosting with trees.  All with different accuracies.
+Tree=0.51
+RandomForest=0.99
+BoostingWithTrees=0.96
+I'll proceed with a random forest model because the accuracy is the best.  I'll use this model to predict with the validation set.
+
+I've reduced the number of boostrap sets from the default of 25 down to 10 in order to make the model train in a reasonable amount of time.  As you can see from the model the accuracy is 99% so **I would expect a 1% out of sample error**.
+```{r}
+ctrl <- trainControl(method = "boot",number= 10) 
+RfTrain=train(classe~.,data=trainSubsetTrain,method="rf",trControl=ctrl)
+RfTrain
+```
+
+I'll predict against the validation set for **cross validation**.  This will confirm the model will perform similarily against new data it hasn't seen before and confirm my out of sample error.  Normally with cross-validation one would test random samples in a loop and plot the accuracy of each of these samples.  This data would then be used to create a mean accuracy and a confidence interval.  With a model that is this accurate, I am not going to perform that step and will smiply predict once against my validation set.
+```{r}
+RfPredict=predict(RfTrain,trainSubsetValidation)
+confusionMatrix(RfPredict,trainSubsetValidation$classe)
+```
+
+Finally, we'll predict against the test set.  I can't provide any measure of accuracy here because the test data set does not contain the predictor variables classe.  I've plugged these values into the quiz associated with the course project and found that they were all correct!
+```{r}
+RfPredictTest=predict(RfTrain,testSubset)
+RfPredictTest
+```
